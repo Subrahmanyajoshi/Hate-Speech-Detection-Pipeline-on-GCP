@@ -1,0 +1,8 @@
+# Pycharm directory
+.idea
+
+# Folders containing data
+data
+
+# Jupyter checkpoints
+.ipynb_checkpoints
