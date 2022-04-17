@@ -1,7 +1,10 @@
 import requests
+from bs4 import BeautifulSoup
+
+from tools.pubsub_publisher import PubSubPublisher
 
 
-class Helper(object):
+class ReviewScraper(object):
 
     """ This class contains functions to scrape review data from Amazon website"""
 
@@ -12,15 +15,16 @@ class Helper(object):
     # The format is COOKIES = {'key1': 'value1', 'key2': 'value2' ...}
     COOKIES = {}
 
-    def __init__(self, user_query: str):
+    def __init__(self, user_query: str, project_id: str, topic_id: str):
         self.user_query = user_query
-        self.url = f"https://www.amazon.in/s?k={user_query}"
+        self.base_url = f"https://www.amazon.in/s?k={user_query}"
+        self.publisher = PubSubPublisher(project_id=project_id, topic_id=topic_id)
 
     @staticmethod
     def get_data(url: str):
         """ fetches the html data from the given URL and returns it. """
 
-        page = requests.get(url, cookies=Helper.COOKIES, headers=Helper.HEADERS)
+        page = requests.get(url, cookies=ReviewScraper.COOKIES, headers=ReviewScraper.HEADERS)
         return page
 
     @staticmethod
@@ -56,4 +60,40 @@ class Helper(object):
         result = data_str.split("\n")
         return result
 
+    def run(self):
 
+        response = ReviewScraper.get_data(self.base_url)
+        soup = BeautifulSoup(response.content)
+
+        # Fetch all of data asin ids
+        data_asins = ReviewScraper.asin_number(soup)
+        message_count = 0
+
+        for data_asin in data_asins[0:2]:
+            url = f"https://www.amazon.in/dp/{data_asin}"
+
+            # Extract all_reviews link for each of the product
+            response = ReviewScraper.get_data(url)
+            soup = BeautifulSoup(response.content)
+            link = ReviewScraper.fetch_href(soup)
+
+            # Fetch all of the reviews from the extracted all_reviews link
+            i = 0
+
+            print(f"Fetching reviews for the product: {data_asin}")
+            while 1:
+                i += 1
+                url = f"https://www.amazon.in{link}&pageNumber={i}"
+                response = ReviewScraper.get_data(url)
+                soup = BeautifulSoup(response.text)
+                review_data = ReviewScraper.customer_review(soup)
+                review_data = [review for review in review_data if len(review) > 0]
+                if len(review_data) == 0:
+                    break
+
+                for review in review_data:
+                    message = {'review': review}
+                    self.publisher.publish(message=message)
+                    message_count += 1
+
+                print(f"Total reviews published till now: {message_count}")
