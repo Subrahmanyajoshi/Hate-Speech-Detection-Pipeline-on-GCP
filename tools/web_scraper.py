@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 
-from tools.pubsub_publisher import PubSubPublisher
+from pubsub_publisher import PubSubPublisher
 
 
 class ReviewScraper(object):
@@ -79,7 +79,7 @@ class ReviewScraper(object):
 
             # Fetch all of the reviews from the extracted all_reviews link
             i = 0
-
+            
             print(f"Fetching reviews for the product: {data_asin}")
             while 1:
                 i += 1
@@ -97,3 +97,9 @@ class ReviewScraper(object):
                     message_count += 1
 
                 print(f"Total reviews published till now: {message_count}")
+
+                
+if __name__ == '__main__':
+
+    scraper = ReviewScraper(user_query='boat+earphones', project_id='text-analysis-323506', topic_id='reviews-texts')
+    scraper.run()
