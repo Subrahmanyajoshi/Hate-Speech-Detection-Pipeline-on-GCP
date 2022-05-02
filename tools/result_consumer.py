@@ -1,10 +1,12 @@
+import json
+
 from concurrent.futures import TimeoutError
 from google.cloud import pubsub_v1
 
 
 class PubSubSubscriber(object):
 
-    def __init__(self, project_id: str, subscription_id: str, timeout: int = 10):
+    def __init__(self, project_id: str, subscription_id: str, timeout: int = 100):
         self.timeout = timeout
         self.subscriber = pubsub_v1.SubscriberClient()
         self.subscription_path = self.subscriber.subscription_path(project_id, subscription_id)
@@ -13,7 +15,9 @@ class PubSubSubscriber(object):
 
     @staticmethod
     def callback(message: pubsub_v1.subscriber.message.Message) -> None:
-        print(f"Received {message}.")
+        
+        converted_message = json.loads(message.data.decode("utf-8"))
+        print(f"Received {converted_message}.")
         message.ack()
 
     def retrieve(self):
@@ -27,3 +31,9 @@ class PubSubSubscriber(object):
             except TimeoutError:
                 self.streaming_pull_future.cancel()  # Trigger the shutdown.
                 self.streaming_pull_future.result()  # Block until the shutdown is complete.
+
+
+if __name__ == '__main__':
+
+    subscriber = PubSubSubscriber(project_id='text-analysis-323506', subscription_id='sa-results-sub')
+    subscriber.retrieve()
