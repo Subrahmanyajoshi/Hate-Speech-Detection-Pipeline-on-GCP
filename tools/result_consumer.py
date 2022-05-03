@@ -6,8 +6,7 @@ from google.cloud import pubsub_v1
 
 class PubSubSubscriber(object):
 
-    def __init__(self, project_id: str, subscription_id: str, timeout: int = 100):
-        self.timeout = timeout
+    def __init__(self, project_id: str, subscription_id: str):
         self.subscriber = pubsub_v1.SubscriberClient()
         self.subscription_path = self.subscriber.subscription_path(project_id, subscription_id)
         self.streaming_pull_future = self.subscriber.subscribe(self.subscription_path, callback=PubSubSubscriber.callback)
@@ -27,7 +26,7 @@ class PubSubSubscriber(object):
             try:
                 # When `timeout` is not set, result() will block indefinitely,
                 # unless an exception is encountered first.
-                self.streaming_pull_future.result(timeout=self.timeout)
+                self.streaming_pull_future.result()
             except TimeoutError:
                 self.streaming_pull_future.cancel()  # Trigger the shutdown.
                 self.streaming_pull_future.result()  # Block until the shutdown is complete.
