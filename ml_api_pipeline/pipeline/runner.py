@@ -9,7 +9,7 @@ from apache_beam.ml.gcp import naturallanguageml as nlp
 from apache_beam.options import pipeline_options
 from apache_beam.options.pipeline_options import GoogleCloudOptions
 
-from components import PipelineComponents
+from ml_api_pipeline.pipeline.components import PipelineComponents
 
 
 class DataFlowSubmitter(object):

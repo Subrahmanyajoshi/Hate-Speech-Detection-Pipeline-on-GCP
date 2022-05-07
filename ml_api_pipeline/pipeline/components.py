@@ -1,9 +1,13 @@
+import re
+import json
+
+from apache_beam.ml.gcp import naturallanguageml as nlp
+
+
 class PipelineComponents(object):
 
     @staticmethod
     def get_review(message: bytes):
-        import json
-
         return json.loads(message.decode("utf-8"))['review']
 
     @staticmethod
@@ -14,8 +18,6 @@ class PipelineComponents(object):
 
     @staticmethod
     def remove_emojis(line: str):
-        import re
-
         emoj = re.compile("["
                           u"\U0001F600-\U0001F64F"  # emoticons
                           u"\U0001F300-\U0001F5FF"  # symbols & pictographs
@@ -40,14 +42,10 @@ class PipelineComponents(object):
 
     @staticmethod
     def convert_to_doc(line: str):
-        from apache_beam.ml.gcp import naturallanguageml as nlp
-
         return nlp.Document(line, type='PLAIN_TEXT')
 
     @staticmethod
     def parse_response(response):
-        import json
-
         final_sentence = ''
 
         for sentence in response.sentences:
