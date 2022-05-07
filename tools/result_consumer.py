@@ -16,7 +16,7 @@ class PubSubSubscriber(object):
     def callback(message: pubsub_v1.subscriber.message.Message) -> None:
         
         converted_message = json.loads(message.data.decode("utf-8"))
-        print(f"Received {converted_message}.")
+        print(f"{converted_message}.\n")
         message.ack()
 
     def retrieve(self):
