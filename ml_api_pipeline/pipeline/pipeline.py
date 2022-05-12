@@ -1,16 +1,15 @@
-import argparse
 from argparse import Namespace
 from datetime import datetime
 
 import apache_beam as beam
 import google
 from apache_beam import io
-from apache_beam.ml.gcp import naturallanguageml as nlp
 from apache_beam.options import pipeline_options
 from apache_beam.options.pipeline_options import GoogleCloudOptions
 from apache_beam.runners import DirectRunner, DataflowRunner
+from google.cloud import bigquery
 
-from ml_api_pipeline.pipeline.components import PipelineComponents
+from ml_api_pipeline.pipeline.components import PipelineComponents, ResultsFilter
 
 
 class PipelineBuilder(object):
@@ -21,6 +20,15 @@ class PipelineBuilder(object):
         self.region = args.region
         self.input_topic = args.input_topic
         self.output_topic = args.output_topic
+
+        self.schema = [
+            bigquery.SchemaField("datetime", "TIMESTAMP", mode="REQUIRED"),
+            bigquery.SchemaField("id", "BIGNUMERIC", mode="REQUIRED"),
+            bigquery.SchemaField("username", "STRING", mode="REQUIRED"),
+            bigquery.SchemaField("content", "STRING", mode="REQUIRED"),
+            bigquery.SchemaField("score", "FLOAT", mode="REQUIRED"),
+            bigquery.SchemaField("sentiment", "STRING", mode="REQUIRED")
+        ]
 
         # Setting up the Apache Beam pipeline options.
         self.options = pipeline_options.PipelineOptions(streaming=True, save_main_session=True)
@@ -50,19 +58,37 @@ class PipelineBuilder(object):
         self.options.view_as(GoogleCloudOptions).temp_location = f"{dataflow_gcs_location}/temp"
 
     def build(self):
-        features = nlp.types.AnnotateTextRequest.Features(extract_document_sentiment=True)
 
-        (
-            self.pipeline
-            | 'Consume messages' >> io.gcp.pubsub.ReadFromPubSub(
-                                    topic=f'projects/{self.project}/topics/{self.input_topic}')
-            | 'get review' >> beam.Map(PipelineComponents.get_review)
-            | 'Strip lines' >> beam.Map(PipelineComponents.strip_lines)
-            | 'Remove emojis' >> beam.Map(PipelineComponents.remove_emojis)
-            | 'convert to doc' >> beam.Map(PipelineComponents.convert_to_doc)
-            | 'Call gcloud nlp api' >> nlp.AnnotateText(features)
-            | 'process response' >> beam.Map(PipelineComponents.parse_response)
-            | 'To result topic' >> beam.io.WriteToPubSub(topic=f'projects/{self.project}/topics/{self.input_topic}')
+        # Get tweet sentiments
+        results = (
+                self.pipeline
+                | 'From PubSub' >> io.gcp.pubsub.ReadFromPubSub(topic='projects/text-analysis-323506/topics/tweets')
+                | 'Load Tweets' >> beam.Map(PipelineComponents.load_tweet)
+                | 'Preprocess Tweets' >> beam.Map(PipelineComponents.preprocess_tweet)
+                | 'Detect Sentiments' >> beam.Map(PipelineComponents.detect_sentiments)
+                | 'Prepare Results' >> beam.Map(PipelineComponents.prepare_results)
+        )
+
+        separated_results = (results | 'Divide Results' >> beam.ParDo(ResultsFilter()).with_outputs('Hate speech',
+                                                                                                    'Normal speech'))
+
+        # Hate speech results to PubSub topic
+        hate_speech_pubsub = (
+                separated_results['Hate speech']
+                | 'Bytes Conversion' >> beam.Map(PipelineComponents.convert_to_bytes)
+                | 'PS Hate Speech' >> beam.io.WriteToPubSub(topic='projects/text-analysis-323506/topics/sa-results')
+        )
+
+        hate_speech_bq = (
+                separated_results['Hate speech']
+                | 'BQ Hate Speech' >> beam.io.WriteToBigQuery(table='hate_speeches', dataset='tweets_analysis',
+                                                              project='text-analysis-323506')
+        )
+
+        normal_speech_bq = (
+                separated_results['Normal speech']
+                | 'BQ Norm Speech' >> beam.io.WriteToBigQuery(table='normal_speeches', dataset='tweets_analysis',
+                                                              project='text-analysis-323506')
         )
 
     def run(self, runner: str):
