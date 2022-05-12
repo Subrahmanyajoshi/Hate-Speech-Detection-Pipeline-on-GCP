@@ -32,6 +32,7 @@ class PipelineBuilder(object):
 
         # Setting up the Apache Beam pipeline options.
         self.options = pipeline_options.PipelineOptions(streaming=True, save_main_session=True)
+        self.set_pipeline_options()
 
         # Creating apache beam pipeline object
         self.pipeline = beam.Pipeline(options=self.options)
