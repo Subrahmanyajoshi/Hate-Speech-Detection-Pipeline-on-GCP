@@ -1,6 +1,6 @@
 import argparse
 
-from ml_api_pipeline.pipeline.pipeline import PipelineBuilder
+from pipeline.pipeline import PipelineBuilder
 
 
 def main():
@@ -10,7 +10,7 @@ def main():
     parser.add_argument('--bucket', type=str, required=True, help='Name of the bucket to host dataflow components')
     parser.add_argument('--input-topic', type=str, required=True, help='input pubsub topic')
     parser.add_argument('--output-topic', type=str, required=True, help='output pubsub topic')
-    parser.add_argument('--setup-file', type=str, required=True, help='setup file')
+    parser.add_argument('--setup-file', type=str, required=False, help='setup file')
     parser.add_argument('--direct-runner', required=False, action='store_true')
     parser.add_argument('--dataflow-runner', required=False, action='store_true')
     args = parser.parse_args()

@@ -9,7 +9,7 @@ from apache_beam.options.pipeline_options import GoogleCloudOptions
 from apache_beam.runners import DirectRunner, DataflowRunner
 from google.cloud import bigquery
 
-from ml_api_pipeline.pipeline.components import PipelineComponents, ResultsFilter
+from pipeline.components import PipelineComponents, ResultsFilter
 
 
 class PipelineBuilder(object):
@@ -34,9 +34,10 @@ class PipelineBuilder(object):
         self.options = pipeline_options.PipelineOptions(streaming=True, save_main_session=True)
         self.set_pipeline_options()
 
-        argv = [
-            f'--setup_file={args.setup_file}'
-        ]
+        argv = []
+        if args.setup_file:
+            argv.append(f'--setup_file={args.setup_file}')
+
         # Creating apache beam pipeline object
         self.pipeline = beam.Pipeline(argv=argv, options=self.options)
 
