@@ -34,8 +34,11 @@ class PipelineBuilder(object):
         self.options = pipeline_options.PipelineOptions(streaming=True, save_main_session=True)
         self.set_pipeline_options()
 
+        argv = [
+            f'--setup_file={args.setup_file}'
+        ]
         # Creating apache beam pipeline object
-        self.pipeline = beam.Pipeline(options=self.options)
+        self.pipeline = beam.Pipeline(argv=argv, options=self.options)
 
         if args.direct_runner and args.dataflow_runner:
             raise ValueError('Please specify only one of the options. either direct runner or dataflow runner')
