@@ -47,7 +47,7 @@ class PipelineBuilder(object):
 
     def set_options(self):
 
-        job_name = f'sa-{datetime.now().strftime("%Y%m%d-%H%M%S")}'
+        job_name = f'hate-speech-{datetime.now().strftime("%Y%m%d-%H%M%S")}'
         dataflow_gcs_location = f'gs://{self.project}/{job_name}'
 
         self.options += [
