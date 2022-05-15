@@ -66,11 +66,9 @@ class PipelineComponents(object):
         line = re.sub('[-+.^:,]', '', line)
 
         # Remove Numbers
-        line = ' '.join(c for c in line if not c.isdigit())
+        line = ' '.join(c for c in line.split() if not c.isdigit())
 
-        # Lower form
         line = line.lower()
-
         message['preprocessed'] = nlp.Document(line, type='PLAIN_TEXT')
         return message
 

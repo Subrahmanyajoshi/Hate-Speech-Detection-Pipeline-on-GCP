@@ -34,5 +34,5 @@ class PubSubSubscriber(object):
 
 if __name__ == '__main__':
 
-    subscriber = PubSubSubscriber(project_id='text-analysis-323506', subscription_id='sa-results-sub')
+    subscriber = PubSubSubscriber(project_id='text-analysis-323506', subscription_id='hs-results-sub')
     subscriber.retrieve()
