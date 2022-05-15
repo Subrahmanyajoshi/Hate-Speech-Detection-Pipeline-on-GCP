@@ -9,11 +9,10 @@ from apache_beam.ml.gcp import naturallanguageml as nlp
 from google.cloud import language
 
 
-# Separate Results into Hate speech or Normal speech
-
+# Separate Results into Hate comment or Normal comment
 class ResultsFilter(beam.DoFn):
-    OUTPUT_TAG_HATE = 'Hate speech'
-    OUTPUT_TAG_NORM = 'Normal speech'
+    OUTPUT_TAG_HATE = 'Hate comments'
+    OUTPUT_TAG_NORM = 'Normal comments'
 
     def process(self, result):
         sentiment = result['sentiment']
@@ -27,30 +26,35 @@ class ResultsFilter(beam.DoFn):
 class PipelineComponents(object):
 
     @staticmethod
-    def load_tweet(message: bytes):
+    def load_comment(message: bytes):
         message = json.loads(message.decode("utf-8"))
         return message
 
     @staticmethod
-    def preprocess_tweet(message: Dict):
-
-        line = message['content']
+    def preprocess_comment(message: Dict):
+        line = message['text']
 
         # Remove extra spaces, hastags and new line characters
         line = line.strip()
         line = line.replace('\n', '')
         line = line.replace('\\', '')
         line = line.replace('#', '')
+        line = line.replace('&', ' ')
         line = ' '.join(line.split())
+
+        # Href strings in comments
+        re.sub("<[^>]+>", "", line)
 
         # Remove @ mentions and URLs
         line = re.sub(r"(?:\@|http?\://|https?\://|www)\S+", "", line)
+
+        # Remove extra spaces
         line = " ".join(line.split())
 
         # Expanding short forms
         contraction_dict = {"ain't": "are not", "'s": " is", "aren't": "are not", "don't": "do not",
                             "didn't": "did not", "won't": "will not",
-                            "can't": "cannot"}
+                            "can't": "cannot", "wouldn't": "would not", "hv": "have", "ik": "i know"}
 
         words = line.split()
         for i in range(len(words)):
@@ -60,6 +64,12 @@ class PipelineComponents(object):
 
         # Remove special characters
         line = re.sub('[-+.^:,]', '', line)
+
+        # Remove Numbers
+        line = ' '.join(c for c in line if not c.isdigit())
+
+        # Lower form
+        line = line.lower()
 
         message['preprocessed'] = nlp.Document(line, type='PLAIN_TEXT')
         return message
@@ -82,7 +92,7 @@ class PipelineComponents(object):
 
         if response:
             message['score'] = response.document_sentiment.score
-            message['sentiment'] = 'hate' if message['score'] < -0.5 else 'normal'
+            message['sentiment'] = 'hate' if message['score'] <= -0.7 else 'normal'
         else:
             message['score'] = np.nan
             message['sentiment'] = 'NA'
@@ -94,5 +104,4 @@ class PipelineComponents(object):
 
     @staticmethod
     def convert_to_bytes(result):
-        import json
         return json.dumps(result).encode("utf-8")

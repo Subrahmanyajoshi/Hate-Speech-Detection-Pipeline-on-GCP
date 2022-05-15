@@ -18,12 +18,14 @@ class PipelineBuilder(object):
         self.output_topic = args.output_topic
 
         self.schema = [
-            bigquery.SchemaField("datetime", "TIMESTAMP", mode="REQUIRED"),
-            bigquery.SchemaField("id", "BIGNUMERIC", mode="REQUIRED"),
-            bigquery.SchemaField("username", "STRING", mode="REQUIRED"),
-            bigquery.SchemaField("content", "STRING", mode="REQUIRED"),
-            bigquery.SchemaField("score", "FLOAT", mode="REQUIRED"),
-            bigquery.SchemaField("sentiment", "STRING", mode="REQUIRED")
+            bigquery.SchemaField("timestamp", "TIMESTAMP", mode="NULLABLE"),
+            bigquery.SchemaField("text", "STRING", mode="NULLABLE"),
+            bigquery.SchemaField("user_name", "STRING", mode="NULLABLE"),
+            bigquery.SchemaField("user_id", "STRING", mode="NULLABLE"),
+            bigquery.SchemaField("user_profile", "STRING", mode="NULLABLE"),
+            bigquery.SchemaField("video_id", "STRING", mode="NULLABLE"),
+            bigquery.SchemaField("score", "FLOAT", mode="NULLABLE"),
+            bigquery.SchemaField("sentiment", "STRING", mode="NULLABLE")
         ]
 
         if args.direct_runner and args.dataflow_runner:
@@ -65,34 +67,34 @@ class PipelineBuilder(object):
         results = (
                 self.pipeline
                 | 'From PubSub' >>
-                io.gcp.pubsub.ReadFromPubSub(topic=f'projects/text-analysis-323506/topics/{self.input_topic}')
-                | 'Load Tweets' >> beam.Map(PipelineComponents.load_tweet)
-                | 'Preprocess Tweets' >> beam.Map(PipelineComponents.preprocess_tweet)
+                io.gcp.pubsub.ReadFromPubSub(topic=f'projects/{self.project}/topics/{self.input_topic}')
+                | 'Load Comments' >> beam.Map(PipelineComponents.load_comment)
+                | 'Preprocess Comments' >> beam.Map(PipelineComponents.preprocess_comment)
                 | 'Detect Sentiments' >> beam.Map(PipelineComponents.detect_sentiments)
                 | 'Prepare Results' >> beam.Map(PipelineComponents.prepare_results)
         )
 
-        separated_results = (results | 'Divide Results' >> beam.ParDo(ResultsFilter()).with_outputs('Hate speech',
-                                                                                                    'Normal speech'))
+        separated_results = (results | 'Divide Results' >> beam.ParDo(ResultsFilter()).with_outputs('Hate comments',
+                                                                                                    'Normal comments'))
 
         # Hate speech results to PubSub topic
-        hate_speech_pubsub = (
-                separated_results['Hate speech']
+        hate_comments_pubsub = (
+                separated_results['Hate comments']
                 | 'Bytes Conversion' >> beam.Map(PipelineComponents.convert_to_bytes)
-                | 'PS Hate Speech' >>
-                beam.io.WriteToPubSub(topic=f'projects/text-analysis-323506/topics/{self.output_topic}')
+                | 'PS Hate Comments' >>
+                beam.io.WriteToPubSub(topic=f'projects/{self.project}/topics/{self.output_topic}')
         )
 
-        hate_speech_bq = (
-                separated_results['Hate speech']
-                | 'BQ Hate Speech' >> beam.io.WriteToBigQuery(table='hate_speeches', dataset='tweets_analysis',
-                                                              project='text-analysis-323506')
+        hate_comments_bq = (
+                separated_results['Hate comments']
+                | 'BQ Hate Comments' >> beam.io.WriteToBigQuery(table='hate_comments', dataset='yt_comments_analysis',
+                                                                project=self.project)
         )
 
-        normal_speech_bq = (
-                separated_results['Normal speech']
-                | 'BQ Norm Speech' >> beam.io.WriteToBigQuery(table='normal_speeches', dataset='tweets_analysis',
-                                                              project='text-analysis-323506')
+        normal_comments_bq = (
+                separated_results['Normal comments']
+                | 'BQ Norm Comments' >> beam.io.WriteToBigQuery(table='normal_comments', dataset='yt_comments_analysis',
+                                                                project=self.project)
         )
 
     def run(self, runner: str):
