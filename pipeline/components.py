@@ -51,10 +51,41 @@ class PipelineComponents(object):
         # Remove extra spaces
         line = " ".join(line.split())
 
+        # Remove special characters
+        line = re.sub('[-+.^:,!]', '', line)
+
+        # Remove Numbers
+        line = ' '.join(c for c in line.split() if not c.isdigit())
+
+        # Remove Emojies
+        emoj = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        u"\U00002500-\U00002BEF"  # chinese char
+        u"\U00002702-\U000027B0"
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        u"\U0001f926-\U0001f937"
+        u"\U00010000-\U0010ffff"
+        u"\u2640-\u2642" 
+        u"\u2600-\u2B55"
+        u"\u200d"
+        u"\u23cf"
+        u"\u23e9"
+        u"\u231a"
+        u"\ufe0f"  # dingbats
+        u"\u3030"
+                      "]+", re.UNICODE)
+        line = re.sub(emoj, '', line)
+
+        line = line.lower().strip()
+
         # Expanding short forms
-        contraction_dict = {"ain't": "are not", "'s": " is", "aren't": "are not", "don't": "do not",
+        contraction_dict = {"ain't": "are not", "'s": " is", "i'm": "i am", "aren't": "are not", "don't": "do not",
                             "didn't": "did not", "won't": "will not",
-                            "can't": "cannot", "wouldn't": "would not", "hv": "have", "ik": "i know"}
+                            "can't": "cannot", "wouldn't": "would not", "hv": "have", "ik": "i know", "fr": "for real"}
 
         words = line.split()
         for i in range(len(words)):
@@ -62,13 +93,6 @@ class PipelineComponents(object):
                 words[i] = contraction_dict[words[i]]
         line = ' '.join(words)
 
-        # Remove special characters
-        line = re.sub('[-+.^:,]', '', line)
-
-        # Remove Numbers
-        line = ' '.join(c for c in line.split() if not c.isdigit())
-
-        line = line.lower()
         message['preprocessed'] = nlp.Document(line, type='PLAIN_TEXT')
         return message
 
@@ -90,7 +114,7 @@ class PipelineComponents(object):
 
         if response:
             message['score'] = response.document_sentiment.score
-            message['sentiment'] = 'hate' if message['score'] <= -0.7 else 'normal'
+            message['sentiment'] = 'hate' if message['score'] <= -0.6 else 'normal'
         else:
             message['score'] = np.nan
             message['sentiment'] = 'NA'
