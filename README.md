@@ -10,7 +10,7 @@
 2. The DataFlow pipeline connects to the same topic and waits for the messages from producer.
 3. When it receives the message, it preprocesses the comment text and calls Google Cloud Natural Language API to 
 detect the sentiment score of the comment.
-4. Any comment which has a sentiment score <= -0.7 is considered as hate speech.
+4. Any comment which has a sentiment score <= -0.6 is considered as hate speech.
 5. The pipeline has 3 different sinks
     1. A PubSub topic to send hate speech comments.
     2. A BigQuery table to send hate speech comments.
@@ -47,3 +47,15 @@ python3 hs_main.py --project=<gcp-project-id> --region=<region> --bucket=<bucket
 python3 hs_main.py --project=<gcp-project-id> --region=<region> --bucket=<bucket-name> --input-topic=<input-pubsub-topic> --output-topic=<output-pubsub-topic> --setup-file='./setup.py' --dataflow-runner
 ```
 - DataFlow jobs can be monitored and managed in [Dataflow web console](https://console.cloud.google.com/dataflow/jobs).
+
+## Results
+- This system depends on Google Cloud's Natural Language API to detect the sentiment. 
+- Hence, the system is only as good as the API. This shouldn't be a big problem as Google Cloud has one of the best APIs out there.
+- I ran the system on the comments in Johnny Depp and Amber Heard trial videos as it's a trending topic at this moment, and 
+Amber Heard seems to be is getting harassed everywhere on social media.
+
+### Hate speech comments detected 
+![alt text](images/hate_speech_results.png)
+
+### Normal speech comments
+![alt text](images/normal_speech_results.png)
